@@ -1,0 +1,127 @@
+----2016.8.15 添加
+MySQL 5.7.6~5.7.14 用 mysql-5.7.14-linux-glibc2.5-x86_64.tar.gz 测试完成
+MySQL 5.7.1~5.7.5 未测试
+
+
+----2016.8.12 添加  
+Ansible是一款IT自动化和DevOps软件 
+
+下面记录如何通过ansible安装mysql到其他主机
+
+控制端主机信息
+ip 172.17.4.179 
+# cat /etc/issue          
+CentOS release 6.4 (Final)
+# uname -r
+2.6.32-358.el6.x86_64
+# python -V
+Python 2.6.6
+
+控制端用阿里EPEL源安装Ansible
+# wget -O /etc/yum.repos.d/epel6.repo http://mirrors.aliyun.com/repo/epel-6.repo 
+# yum clean all
+# yum makecache
+# yum install ansible 
+# ansible --version
+ansible 2.1.0.0
+下载mysql程序，下载一次就好
+# mkdir -p /soft 
+# wget -O /soft/mysql-5.6.22-linux-glibc2.5-x86_64.tar.gz http://cdn.mysql.com/archives/mysql-5.6/mysql-5.6.22-linux-glibc2.5-x86_64.tar.gz 
+下载用ansible编写的安装脚本
+# yum install git tree 
+# cd /etc/ansible
+# git clone https://github.com/wanghy8166/mysql_install.git 
+
+下载用ansible编写的安装脚本，目录结构为
+# tree /etc/ansible/mysql_install/
+/etc/ansible/mysql_install/
+├── mysql_install.yml
+├── README
+└── roles
+    ├── common
+    │   └── tasks
+    │       └── main.yml
+    └── mysql_install
+        ├── files
+        │   ├── mysql-5.6.22-linux-glibc2.5-x86_64.tar.gz -> /soft/mysql-5.6.22-linux-glibc2.5-x86_64.tar.gz
+        │   ├── mysql-5.6.31-linux-glibc2.5-x86_64.tar.gz -> /soft/mysql-5.6.31-linux-glibc2.5-x86_64.tar.gz
+        │   └── mysql-5.7.14-linux-glibc2.5-x86_64.tar.gz -> /soft/mysql-5.7.14-linux-glibc2.5-x86_64.tar.gz
+        ├── tasks
+        │   ├── copy.yml
+        │   ├── delete.yml
+        │   ├── install.yml
+        │   └── main.yml
+        ├── templates
+        │   ├── firewall7.sh
+        │   ├── firewall.sh
+        │   ├── install_mysql.sh
+        │   ├── my.cnf
+        │   ├── mysqld
+        │   └── mysql_security.sh
+        └── vars
+            └── main.yml
+
+8 directories, 17 files
+
+如果希望在控制端ssh免密码登录、操作被控端
+那么在控制端配置
+ssh-keygen -t rsa -P ''
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@172.17.4.180 
+
+待安装mysql的被控端主机信息
+ip 172.17.4.180 
+# cat /etc/redhat-release 
+CentOS Linux release 7.2.1511 (Core)
+OS基本环境选择的是:GNOME Desktop
+# uname -r
+3.10.0-327.el7.x86_64
+# python -V
+Python 2.7.5
+
+CentOS7默认集成的是mysql的分支版本mariadb，所以也预装了mariadb-libs
+# rpm -qa|grep maria
+mariadb-libs-5.5.44-2.el7.centos.x86_64
+手工清理预装配置文件，ansible脚本也做了相同处理 
+touch /etc/my.cnf
+mv /etc/my.cnf /etc/my.cnf.`date +%Y%m%d%H%M%S`
+
+外网调通
+cat /etc/sysconfig/network-scripts/ifcfg-ens192    
+IPADDR="172.17.4.180"
+PREFIX="21"
+GATEWAY="172.17.0.49"
+DNS1="202.96.209.5"
+service network restart
+yum下载环境配好
+mv /etc/yum.repos.d /etc/yum.repos.d.org
+mkdir -p /etc/yum.repos.d
+cd /etc/yum.repos.d
+如果是CentOS7则为
+wget -O /etc/yum.repos.d/CentOS-Base7.repo http://mirrors.aliyun.com/repo/Centos-7.repo 
+wget -O /etc/yum.repos.d/epel7.repo http://mirrors.aliyun.com/repo/epel-7.repo 
+如果是CentOS6则为
+wget -O /etc/yum.repos.d/CentOS-Base6.repo http://mirrors.aliyun.com/repo/Centos-6.repo 
+wget -O /etc/yum.repos.d/epel6.repo http://mirrors.aliyun.com/repo/epel-6.repo 
+
+yum clean all
+yum makecache
+
+在控制端执行mysql安装命令
+time ansible-playbook /etc/ansible/mysql_install/mysql_install.yml --extra-vars "host=172.17.4.180 user=root" -k 
+-k是需要输入密码
+-vvv是debug模式，可以显示详细报错
+
+参考资料：
+官方文档 http://docs.ansible.com/ansible/index.html
+Ansible中文权威指南 http://www.ansible.com.cn/index.html
+示例 https://github.com/dl528888/ansible-examples/tree/master/mysql_install
+
+其他问题：
+在CentOS7系列执行mysql_install_db脚本需要先安装Perl子模块Data::Dumper
+yum install perl-Data-Dumper
+
+待研究问题：
+主机bios调优
+OS调优
+my.cnf配置文件里面的各项参数调优
+

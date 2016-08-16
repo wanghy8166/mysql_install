@@ -1,0 +1,43 @@
+  - name: Create Mysql Install Dir
+    file: dest={{ mysql_dir }} state=directory
+  - name: Uncompression Mysql Software To Redhat Client
+    shell: tar zxf /tmp/{{mysql_version}}.tar.gz -C {{ mysql_dir }}
+  - name: link Mysql Software 
+    file: src={{ mysql_dir }}/{{mysql_version}} dest={{ mysql_basedir }} state=link 
+  - name: Modify Mysql Dir Permission In Redhat Client
+    file: path={{ item }} owner={{ mysql_user }} group={{ mysql_user }} mode=0755 state=directory 
+    with_items:
+      - "{{ mysql_datadir }}"
+#      - "{{ mysql_basedir }}"
+  - name: Modify mysql_basedir Dir Permission 01 
+    shell: chown -R {{ mysql_user }}:{{ mysql_user }} {{ mysql_basedir }} 
+  - name: Modify mysql_basedir Dir Permission 02 
+    shell: chmod -R 0755 {{ mysql_basedir }}    
+  - name: Modify mysql_basedir Dir Permission 03 
+    shell: chown -R {{ mysql_user }}:{{ mysql_user }} {{ mysql_dir }}/{{mysql_version}}
+  - name: Modify mysql_basedir Dir Permission 04 
+    shell: chmod -R 0755 {{ mysql_dir }}/{{mysql_version}}
+
+  - name: Install Mysql Script In Redhat Client
+    shell: /bin/bash /tmp/install_mysql.sh
+  - name: Wait Untils Mysql Service Avaiable In Redhat Client
+    shell: "{{ mysql_basedir }}/bin/mysql -h localhost -u {{ mysql_database_user }} -P {{ mysql_port }} -S {{ mysql_sock }} -e 'show databases;' && echo 'ok' || echo 'work'"
+    register: result
+    until: result.stdout.find("ok") != -1
+    retries: 60
+    delay: 15
+  - name: Start Myql Security Script In Redhat Client
+    shell: "/bin/bash /tmp/mysql_security.sh && echo 'ok' || echo 'work'"
+    register: run_result
+    until: run_result.stdout.find("ok") != -1
+    retries: 10
+    delay: 5
+  - name: Add Boot Start Mysql Service In Redhat Client
+    shell: chkconfig --level 345 mysqld on
+
+  - name: add firewall7.sh
+    shell: "/bin/bash /tmp/firewall7.sh"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+  - name: add firewall.sh
+    shell: "/bin/bash /tmp/firewall.sh"
+    when: ansible_os_family == "RedHat" and ansible_distribution_major_version <= "6"

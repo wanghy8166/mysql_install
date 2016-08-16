@@ -1,0 +1,18 @@
+  - name: Copy Mysql Software To Redhat Client
+    copy: src={{mysql_version}}.tar.gz dest=/tmp/{{mysql_version}}.tar.gz owner=root group=root
+  - name: Create Mysql group In Redhat Client
+    group: name={{ mysql_user }} state=present 
+  - name: Create Mysql User In Redhat Client
+    user: name={{ mysql_user }} group={{ mysql_user }} state=present createhome=no shell=/sbin/nologin
+  - name: Copy Mysql Start Script To Redhat Client
+    template: src=mysqld dest=/etc/init.d/mysqld owner=root group=root mode=0755
+  - name: Copy Install Mysql Script  To Redhat Client
+    template: src=install_mysql.sh dest=/tmp/ owner=root group=root mode=0755
+  - name: Copy Mysql Config To Redhat Client
+    template: src=my.cnf dest=/tmp/ owner=root group=root mode=0644
+  - name: Copy Mysql Security Script To Redhat Client
+    template: src=mysql_security.sh dest=/tmp/ owner=root group=root mode=0755
+  - name: Copy firewall7.sh
+    template: src=firewall7.sh dest=/tmp/ owner=root group=root mode=0755
+  - name: Copy firewall.sh
+    template: src=firewall.sh dest=/tmp/ owner=root group=root mode=0755

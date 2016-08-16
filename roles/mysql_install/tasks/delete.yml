@@ -1,0 +1,2 @@
+  - name: Delete Mysql compression Software In Redhat Client
+    shell: rm -rf /tmp/{{mysql_version}}.tar.gz /tmp/mysql_security.sh /tmp/install_mysql.sh /tmp/firewall7.sh /tmp/firewall.sh 
